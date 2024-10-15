@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio Corridor</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden; /* Disable page scroll */
+      font-family: Arial, sans-serif;
+      background-color: #1e1e2e; /* Catppuccin Mocha Base */
+      color: white;
+      cursor: pointer;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 1;
+    }
+
+    .overlay h1 {
+      font-size: 2rem;
+      margin: 0;
+      color: #f5e0dc; /* Catppuccin Mocha Text */
+    }
+  </style>
+</head>
+<body>
+
+<div class="overlay">
+  <h1>Scroll to Explore the Projects and Click on the Paintings</h1>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+  // Create Scene, Camera, and Renderer
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Lighting
+  const light = new THREE.PointLight(0xffffff, 1, 100);
+  light.position.set(0, 10, 5);
+  scene.add(light);
+
+  const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
+  scene.add(ambientLight);
+
+  // Corridor dimensions
+  const corridorWidth = 10;
+  const wallHeight = 5;
+  const corridorLength = 100;
+
+  // Catppuccin Mocha colors
+  const catppuccinMocha = {
+    surface0: '#313244',
+    surface1: '#45475a',
+    mantle: '#181825',
+    base: '#1e1e2e',
+    text: '#f5e0dc',
+    green: '#a6e3a1',
+    blue: '#89b4fa',
+    pink: '#f5c2e7'
+  };
+
+  // Wall materials
+  const wallMaterial = new THREE.MeshBasicMaterial({ color: catppuccinMocha.surface0 });
+
+  // Left wall
+  const leftWallGeometry = new THREE.PlaneGeometry(corridorLength, wallHeight);
+  const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+  leftWall.position.set(-corridorWidth / 2, 0, -corridorLength / 2);
+  leftWall.rotation.y = Math.PI / 2;
+  scene.add(leftWall);
+
+  // Right wall
+  const rightWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+  rightWall.position.set(corridorWidth / 2, 0, -corridorLength / 2);
+  rightWall.rotation.y = -Math.PI / 2;
+  scene.add(rightWall);
+
+  // Floor
+  const floorGeometry = new THREE.PlaneGeometry(corridorLength, corridorWidth);
+  const floorMaterial = new THREE.MeshBasicMaterial({ color: catppuccinMocha.mantle });
+  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, -wallHeight / 2, -corridorLength / 2);
+  scene.add(floor);
+
+  // Paintings
+  const paintings = [];
+  const paintingTextures = [
+    'https://picsum.photos/id/1010/300/200',
+    'https://picsum.photos/id/1011/300/200',
+    'https://picsum.photos/id/1012/300/200',
+    'https://picsum.photos/id/1013/300/200'
+  ];
+
+  paintingTextures.forEach((textureURL, index) => {
+    const texture = new THREE.TextureLoader().load(textureURL);
+    const paintingGeometry = new THREE.PlaneGeometry(3, 2);
+    const paintingMaterial = new THREE.MeshBasicMaterial({ map: texture });
+    const painting = new THREE.Mesh(paintingGeometry, paintingMaterial);
+
+    // Position paintings alternately on left and right walls
+    const offset = index * -15 - 10;
+    const positionX = (index % 2 === 0) ? -corridorWidth / 2 + 1 : corridorWidth / 2 - 1;
+    painting.position.set(positionX, 0, offset);
+    painting.rotation.y = (index % 2 === 0) ? Math.PI / 2 : -Math.PI / 2;
+    scene.add(painting);
+    paintings.push(painting);
+  });
+
+  camera.position.set(0, 0, 5);
+
+  // Interaction when clicking on paintings
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+
+  function onClick(event) {
+    // Calculate mouse position in normalized device coordinates
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(paintings);
+
+    if (intersects.length > 0) {
+      // For now, just alert the index of the clicked painting
+      alert('You clicked a painting!');
+    }
+  }
+
+  window.addEventListener('click', onClick);
+
+  // Smooth camera movement with interpolation (lerp)
+  let targetZ = 5; // Target Z position
+  const scrollSpeedFactor = 0.05; // Control speed of movement
+
+  function onScroll(event) {
+    targetZ += event.deltaY * scrollSpeedFactor; // Adjust the speed factor here
+    if (targetZ < -corridorLength + 5) {
+      targetZ = -corridorLength + 5;
+    } else if (targetZ > 5) {
+      targetZ = 5;
+    }
+  }
+
+  window.addEventListener('wheel', onScroll);
+
+  function animate() {
+    // Smooth interpolation towards targetZ
+    camera.position.z += (targetZ - camera.position.z) * 0.1; // The smaller the factor, the smoother the movement
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+
+  // Handle window resize
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  });
+
+</script>
+
+</body>
+</html>

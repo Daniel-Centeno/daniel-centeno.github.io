@@ -1,0 +1,7 @@
+# three.js 
+
+# vite 
+npm install --save-dev vite
+
+#run
+npx vite
